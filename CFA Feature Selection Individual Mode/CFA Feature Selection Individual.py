@@ -80,7 +80,7 @@ def main():
                               class_weight=None)
     clf6 = KNeighborsClassifier(n_neighbors=5)
 
-    path = 'C://Users//James//Desktop//Train_set.csv'
+    path = 'Train_set.csv'
     df = pd.read_csv(path)
     df = df.set_index(['Unnamed: 0'])
     y_train = df['y']
