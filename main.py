@@ -2,7 +2,7 @@ import math
 import pandas as pd
 import numpy as np
 import scipy as sci
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 from imblearn.over_sampling import SMOTE
 
@@ -30,6 +30,8 @@ from sklearn.metrics import accuracy_score
 from pathlib import Path
 
 def filter_features (X_train, y_train, index, clf):
+    sm = SMOTE(random_state = 42, ratio = 1)
+    kf = KFold(n_splits=5, random_state=42, shuffle=False)
     list_of_acc = []
     list_of_std = []
     for i in range(len(index)):
@@ -59,6 +61,8 @@ def filter_features (X_train, y_train, index, clf):
     return df_acc, df_std
 
 def get_avg_feat_importance(clf, X_train, y_train):
+    sm = SMOTE(random_state = 42, ratio = 1)
+    kf = KFold(n_splits=5, random_state=42, shuffle=False)
     accur_list = []
     feat_import =[]
     sum_of_acc = 0
@@ -94,7 +98,7 @@ def test_all_features(clf, X_train, y_train):
     print(avg_accur)
     
 
-def get_scores(score_func, X, Y):
+def get_scores(score_func, X, Y, X_train):
     k_best = SelectKBest(score_func = score_func, k = X.shape[1])
     fit = k_best.fit(X,Y)
     scores = pd.Series(index = X_train.columns, data = fit.scores_)
@@ -109,10 +113,13 @@ def get_feat_acc (X_train, y_train, indices, classifier):
         acc, std = filter_features(X_train,y_train,index = indices[i], clf=classifier)
         list_of_acc.append(acc)
         list_of_std.append(std)
+    list_of_acc = pd.DataFrame(list_of_acc)
+    list_of_std = pd.DataFrame(list_of_std)
+
     return list_of_acc, list_of_std
 
 def main():
-    path = "C://Users//James//Desktop//data_cleaned.csv"
+    path = "data_cleaned.csv"
     data = pd.read_csv(path)
     #print(data.shape)
     x = data.iloc[:,3:124]
@@ -197,15 +204,32 @@ def main():
     print(y_res[y_res == 1].count())
     print(y_res[y_res == 0].count()/y_res[y_res == 1].count())
 
-
-    #Get importance scores: 
-    chi2_score = get_scores(chi2,X_res, y_res)
-    f_classif_score = get_scores(f_classif, X_res, y_res)
-    mutual_info_score = get_scores (mutual_info_classif, X_res, y_res)
-    rand_for_score = get_avg_feat_importance(clf, X_train, y_train)
-
+    #Declare Classifiers 
+    clf1 = LogisticRegression(solver = 'liblinear')
+    clf2 = Perceptron(tol=1e-3, random_state=42)
+    clf3 = GaussianNB()
+    clf4 = SVC(gamma='auto')
+    clf5 = RandomForestClassifier(n_estimators='warn', criterion='gini', max_depth=None, 
+                              min_samples_split=2, min_samples_leaf=1, 
+                              min_weight_fraction_leaf=0.0, max_features='auto', 
+                              max_leaf_nodes=None, min_impurity_decrease=0.0, 
+                              min_impurity_split=None, bootstrap=True, oob_score=False, 
+                              n_jobs=None, random_state=None, verbose=0, warm_start=False, 
+                              class_weight=None)
+    clf6 = KNeighborsClassifier(n_neighbors=5)
 
     min_max_scaler = preprocessing.MinMaxScaler()
+
+    #Declare kf
+    kf = KFold(n_splits=5, random_state=42, shuffle=False)
+
+    #Get importance scores: 
+    chi2_score = get_scores(chi2,X_res, y_res, X_train)
+    f_classif_score = get_scores(f_classif, X_res, y_res, X_train)
+    mutual_info_score = get_scores (mutual_info_classif, X_res, y_res, X_train)
+    rand_for_score = get_avg_feat_importance(clf5, X_train, y_train)
+   
+
     #Create Dataframe
     scores = pd.DataFrame(dict(Chi2 = chi2_score, F_class_if = f_classif_score, MI = mutual_info_score, Rand_For = rand_for_score)).reset_index()
     feature_names = scores['index']
@@ -224,7 +248,7 @@ def main():
     scores.to_csv("Feature_Select_Scores.csv")
     #print(scores)
     
-    kf = KFold(n_splits=5, random_state=42, shuffle=False)
+    
     #filtering method
     
     index_1 = scores['Chi2'].sort_values(ascending = False).index
@@ -242,19 +266,6 @@ def main():
     #print(indices)
     
     print(scores.sort_values('mean', ascending=False))
-    
-    clf1 = LogisticRegression(solver = 'liblinear')
-    clf2 = Perceptron(tol=1e-3, random_state=42)
-    clf3 = GaussianNB()
-    clf4 = SVC(gamma='auto')
-    clf5 = RandomForestClassifier(n_estimators='warn', criterion='gini', max_depth=None, 
-                              min_samples_split=2, min_samples_leaf=1, 
-                              min_weight_fraction_leaf=0.0, max_features='auto', 
-                              max_leaf_nodes=None, min_impurity_decrease=0.0, 
-                              min_impurity_split=None, bootstrap=True, oob_score=False, 
-                              n_jobs=None, random_state=None, verbose=0, warm_start=False, 
-                              class_weight=None)
-    clf6 = KNeighborsClassifier(n_neighbors=5)
     
     logit_acc, logit_std = get_feat_acc(X_train, y_train, indices, clf1)
     logit_acc.to_csv('logit_accuracy.csv')
